@@ -1,3 +1,4 @@
+streamlit
 openai
 json
 streamlit_extras
