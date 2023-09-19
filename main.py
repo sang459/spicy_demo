@@ -3,6 +3,9 @@ import openai
 import json
 import re
 from streamlit_extras.switch_page_button import switch_page
+from llama_index import VectorStoreIndex, ServiceContext, Document
+from llama_index.llms import OpenAI
+from llama_index import SimpleDirectoryReader
 
 OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 openai.api_key = OPENAI_API_KEY
