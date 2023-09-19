@@ -1,5 +1,4 @@
 streamlit
 openai
-json
 streamlit_extras
 llama_index
