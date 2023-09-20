@@ -77,6 +77,8 @@ else:
     status_prompt = "The status of the tasks are as follows: "
     for task, status in st.session_state.task_status.items():
         status_prompt += f"""{task}: {status}, """
+    
+    print(status_prompt)
 
     # status 정보를 history에 추가
     st.session_state.chat_history_for_model_day2.append({"role": "user", "content": status_prompt})

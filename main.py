@@ -2,6 +2,7 @@ import streamlit as st
 import openai
 import json
 import re
+import time
 from streamlit_extras.switch_page_button import switch_page
 from llama_index import VectorStoreIndex, ServiceContext, Document
 from llama_index.llms import OpenAI
@@ -11,6 +12,15 @@ from llama_index.indices.postprocessor import SimilarityPostprocessor
 from llama_index.schema import Node, NodeWithScore
 from llama_index.response_synthesizers import ResponseMode, get_response_synthesizer
 
+#################################################################################################################################
+# We customized llama_index so that it generates a memo for Spicy from a CBT guideline document, considering the user's concerns. 
+# This involves 
+# 1) calling a seperate agent created by me that generates a retriever query from the chat history, 
+# 2) retrieving relevant information from the CBT guideline document, and
+# 3) synthesizing a memo from the retrieved information.
+#################################################################################################################################
+
+
 OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 openai.api_key = OPENAI_API_KEY
 storage_context = StorageContext.from_defaults(persist_dir="./data/")
@@ -18,13 +28,15 @@ storage_context = StorageContext.from_defaults(persist_dir="./data/")
 index = load_index_from_storage(storage_context) 
 retriever = index.as_retriever()
 
-#################################################################################################################################
-# I customized llama_index so that it generates a memo for Spicy from a CBT guideline document, considering the user's concerns. 
-# This involves 
-# 1) calling a seperate agent created by me that generates a retriever query from the chat history, 
-# 2) retrieving relevant information from the CBT guideline document, and
-# 3) synthesizing a memo from the retrieved information.
-#################################################################################################################################
+def timer_decorator(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()  # 시작 시간 측정
+        result = func(*args, **kwargs)  # 원래 함수 실행
+        end_time = time.time()  # 종료 시간 측정
+        elapsed_time = end_time - start_time  # 실행 시간 계산
+        print(f"{func.__name__} 함수 실행 시간: {elapsed_time:.6f}초")
+        return result
+    return wrapper
 
 # Initialize task_list
 if "task_list" not in st.session_state:
@@ -71,6 +83,7 @@ if "chat_history_for_display" not in st.session_state:
          Dump all of tomorrow's tasks right here, and I'll help you prioritize them."""},
     ]
 
+@timer_decorator
 def get_response(chat_history, previous_task_list):
     """
     지금까지의 chat history와 task list를 받아서, 새로운 chat history를 만들기 위한 구성요소와 갱신된 task list를 return하는 함수
@@ -94,6 +107,7 @@ def get_response(chat_history, previous_task_list):
                     )
 
     raw_content = response['choices'][0]['message']['content']
+    raw_content.replace('\t', '    ')
     # '컨트롤 문자'를 제거
     clean_string = re.sub(r'[\x00-\x1F\x7F]', '', raw_content)
     content = json.loads(clean_string)
@@ -116,6 +130,7 @@ def get_response(chat_history, previous_task_list):
 
     return raw_content, comment, new_task_list, current_state
 
+@timer_decorator
 def generate_retriever_query(chat_history_for_display):
     """
     chat_history_for_display를 받아서, retriever query를 만들어주는 함수
@@ -140,32 +155,46 @@ def generate_retriever_query(chat_history_for_display):
 
     return query
 
+@timer_decorator
 def generate_relevant_info(chat_history_for_display, user_input):
-    query = generate_retriever_query(chat_history_for_display)
+    print('GENERATING QUERY...')
+    try:
+        query = generate_retriever_query(chat_history_for_display[-6:])
+    except Exception as e:
+        print(e)
+        query = generate_retriever_query(chat_history_for_display[-2:])
     print(query)
     nodes = retriever.retrieve(query)
     print(nodes)
     processor = SimilarityPostprocessor(similarity_cutoff=0.75)
     filtered_nodes = processor.postprocess_nodes(nodes)
+    print('SYNTHESIZING MEMO...')
+    synth_start_time = time.time()
     response_synthesizer = get_response_synthesizer(response_mode=ResponseMode.COMPACT)
 
     i = 0
     while i < 3:
-        response = response_synthesizer.synthesize(f"Provide a short, precise and informative memo for a CBT counselor dealing with an adult ADHD patient. The patient's message was: {user_input}", nodes=filtered_nodes)
+        response = response_synthesizer.synthesize(f"Provide a short, precise, straight-to-the-point and informative memo for a CBT counselor dealing with an adult ADHD patient. The patient's message was: {user_input}", nodes=filtered_nodes)
         response = response.response
         i += 1
-        print(i) # 계속 none뱉는 문제
+        print(i)
         if type(response) == str:
             break
     
     if type(response) != str:
         response = ""
+    synth_end_time = time.time()
+    print(f"SYNTHESIZING TIME: {synth_end_time - synth_start_time:.6f}초")
     
     print("GENERATED MEMO: \n"+response)
 
     return response
 
+
+
+    
 st.title("SPICY: personal advisor for ADHD adults")
+st.markdown("video demo: https://youtu.be/kcb5eLBIKzs")
 
 if "saved_tasks" not in st.session_state:
     st.session_state.saved_tasks = []
@@ -249,6 +278,7 @@ if user_input:
         # Get the model response
         st.session_state.hide_edit = True
         with st.chat_message("assistant"):
+            st.markdown("*Spicy is thinking...*")
             raw_content, comment, new_task_list, current_state  = get_response(st.session_state.chat_history_for_model, st.session_state.task_list)
             print("\nraw_content: "+ raw_content)
             print("\nnew_task_list: "+ new_task_list)
@@ -265,4 +295,3 @@ if user_input:
         st.session_state.hide_edit = False
 
         st.experimental_rerun()
-
