@@ -6,9 +6,26 @@ from streamlit_extras.switch_page_button import switch_page
 from llama_index import VectorStoreIndex, ServiceContext, Document
 from llama_index.llms import OpenAI
 from llama_index import SimpleDirectoryReader
+from llama_index import load_index_from_storage, StorageContext
+from llama_index.indices.postprocessor import SimilarityPostprocessor
+from llama_index.schema import Node, NodeWithScore
+from llama_index.response_synthesizers import ResponseMode, get_response_synthesizer
 
-OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+# OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+OPENAI_API_KEY = "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"
 openai.api_key = OPENAI_API_KEY
+storage_context = StorageContext.from_defaults(persist_dir="./data/")
+
+index = load_index_from_storage(storage_context) 
+retriever = index.as_retriever()
+
+#################################################################################################################################
+# I customized llama_index so that it generates a memo for Spicy from a CBT guideline document, considering the user's concerns. 
+# This involves 
+# 1) calling a seperate agent created by me that generates a retriever query from the chat history, 
+# 2) retrieving relevant information from the CBT guideline document, and
+# 3) synthesizing a memo from the retrieved information.
+#################################################################################################################################
 
 # Initialize task_list
 if "task_list" not in st.session_state:
@@ -100,6 +117,54 @@ def get_response(chat_history, previous_task_list):
 
     return raw_content, comment, new_task_list, current_state
 
+def generate_retriever_query(chat_history_for_display):
+    """
+    chat_history_for_display를 받아서, retriever query를 만들어주는 함수
+
+    반환값
+
+    query: str
+    """
+    
+    chat_history_for_retrieval_query = chat_history_for_display.copy()
+    chat_history_for_retrieval_query.append({"role": "user", "content": "[INSTRUCTION] To address the user's concerns based on our chat history, you will refer to the CBT guideline book for adult ADHD. Provide relevant keywords or topics of interest so you can extract the most pertinent information. ONLY KEYWORDS."})
+
+    response = openai.ChatCompletion.create(
+                    model= "gpt-3.5-turbo",
+                    messages=chat_history_for_retrieval_query,
+                    stream=False,
+                    temperature=0.5,
+                    top_p = 0.93
+                    )
+
+    query = response['choices'][0]['message']['content']
+
+    return query
+
+def generate_relevant_info(chat_history_for_display, user_input):
+    query = generate_retriever_query(chat_history_for_display)
+    print(query)
+    nodes = retriever.retrieve(query)
+    print(nodes)
+    processor = SimilarityPostprocessor(similarity_cutoff=0.75)
+    filtered_nodes = processor.postprocess_nodes(nodes)
+    response_synthesizer = get_response_synthesizer(response_mode=ResponseMode.COMPACT)
+
+    i = 0
+    while i < 3:
+        response = response_synthesizer.synthesize(f"Provide a short, precise and informative memo for a CBT counselor dealing with an adult ADHD patient. The patient's message was: {user_input}", nodes=filtered_nodes)
+        response = response.response
+        i += 1
+        print(i) # 계속 none뱉는 문제
+        if type(response) == str:
+            break
+    
+    if type(response) != str:
+        response = ""
+    
+    print("GENERATED MEMO: \n"+response)
+
+    return response
 
 st.title("SPICY: personal advisor for ADHD adults")
 
@@ -155,15 +220,23 @@ if user_input:
             st.markdown(user_input)
         
         if st.session_state.change_in_task_list:
-            change_in_tasklist = "The user changed the task list: \n" + st.session_state.task_list + "\n"
+            change_in_tasklist = "[CHANGE IN TASK LIST] The user changed the task list:\n" + st.session_state.task_list + "\n"
             st.session_state.change_in_task_list = False
         else:
             change_in_tasklist = ""
 
-        # Append user input + instruction to chat_history_for_model
-        st.session_state.chat_history_for_model.append({"role": "user", "content": user_input + "\n" + change_in_tasklist + instructions[st.session_state.current_state]})
-        # Append user input to chat_history_for_display
-        st.session_state.chat_history_for_display.append({"role": "user", "content": user_input})
+        if st.session_state.current_state == 3:
+            # Generate a memo from the chat history
+            memo = "[GUIDANCE MEMO]\n"
+            memo = memo + generate_relevant_info(st.session_state.chat_history_for_display, user_input)
+            # Append the memo to chat_history_for_model
+            st.session_state.chat_history_for_model.append({"role": "user", "content": user_input + "\n" + memo + change_in_tasklist + instructions[st.session_state.current_state]})
+            # Append the memo to chat_history_for_display
+            st.session_state.chat_history_for_display.append({"role": "user", "content": user_input})
+        
+        else:
+            st.session_state.chat_history_for_model.append({"role": "user", "content": user_input + "\n" + change_in_tasklist + instructions[st.session_state.current_state]})
+            st.session_state.chat_history_for_display.append({"role": "user", "content": user_input})
 
         # Get the model response
         st.session_state.hide_edit = True
@@ -185,4 +258,3 @@ if user_input:
 
         st.experimental_rerun()
 
-#########################################################
