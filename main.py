@@ -11,8 +11,7 @@ from llama_index.indices.postprocessor import SimilarityPostprocessor
 from llama_index.schema import Node, NodeWithScore
 from llama_index.response_synthesizers import ResponseMode, get_response_synthesizer
 
-# OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
-OPENAI_API_KEY = "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"
+OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 openai.api_key = OPENAI_API_KEY
 storage_context = StorageContext.from_defaults(persist_dir="./data/")
 
@@ -179,6 +178,15 @@ if "change_in_task_list" not in st.session_state:
 
 if "hide_edit" not in st.session_state:
     st.session_state.hide_edit = True
+
+st.markdown("""
+            <style>
+            [data-testid="stSidebarNav"] {
+                display: none
+            }
+            </style>
+            """, unsafe_allow_html=True)
+
 
 with st.sidebar:
     st.markdown("## Tomorrow's tasks")
