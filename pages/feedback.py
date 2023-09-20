@@ -1,6 +1,18 @@
 import streamlit as st
 import openai
 
+st.markdown("""
+            <style>
+            [data-testid="stSidebarNav"] {
+                display: none
+            }
+            
+            [data-testid="stSidebar"] {
+                display: none
+            }
+            </style>
+            """, unsafe_allow_html=True)
+
 def get_response(chat_history_for_model_day2):
     response = openai.ChatCompletion.create(
                 model= "gpt-4",

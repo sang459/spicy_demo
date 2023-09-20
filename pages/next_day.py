@@ -2,6 +2,17 @@ import streamlit as st
 import openai
 from streamlit_extras.switch_page_button import switch_page
 
+st.markdown("""
+            <style>
+            [data-testid="stSidebarNav"] {
+                display: none
+            }
+
+            [data-testid="stSidebar"] {
+                display: none
+            }
+            </style>
+            """, unsafe_allow_html=True)
 
 if "chat_history_for_model_day2" not in st.session_state:
     st.session_state.chat_history_for_model_day2 = [
