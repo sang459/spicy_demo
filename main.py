@@ -52,8 +52,8 @@ In the Prioritization part, Spicy asks the user to dump all of tomorrow's tasks 
 Then, Spicy helps the user prioritize the tasks by asking questions about each task. 
 In the Breakdown part, Spicy asks the user to break down the prioritized tasks into smaller subtasks. 
 The user can also ask Spicy to add a new task or subtask at any time.
-YOU MUST provide your output in JSON compliant format with the keys: comment, task_list, and current_state.
-Example: {"comment": "(Spicy and Daisy's response to the user goes here)", "task_list": "(markdown formatted task list in the order of priority goes here, blank string if no task list)", "current_state": (current state of the conversation, 0, 1, 2, or 3)}
+YOU MUST provide your output in JSON compliant format with the keys: comment, task_list, and current_state. Please answer in KOREAN.
+Example: {"comment": "(유저에 대한 Spicy의 답변)", "task_list": "(마크다운 형식의 중요도 순서로 배열된 task list, task list가 없다면 빈 string)", "current_state": (current state of the conversation, 0, 1, 2, or 3)}
 """
 prioritize_instruction = ""
 breakdown_instruction = ""
@@ -70,8 +70,8 @@ if "chat_history_for_model" not in st.session_state:
     st.session_state.chat_history_for_model = [
         {"role": "system", "content": initial_instruction},
         {"role": "assistant", "content": 
-         """{"comment": "**Spicy:**    \nAlright, champ. What's on the chaos list for tomorrow? 
-         Dump all of tomorrow's tasks right here, and I'll help you prioritize them.", "task_list": ""}"""},
+         """{"comment": "**Spicy:**    \n좋아, 친구. 내일의 잡다한 일들을 여기에 나열해봐.
+그럼 내가 하나하나 정리하고 우선순위를 정하는 걸 도와줄게.", "task_list": ""}"""},
     ]
 
 # Initialize chat_history_for_display
@@ -79,8 +79,8 @@ if "chat_history_for_model" not in st.session_state:
 if "chat_history_for_display" not in st.session_state:
     st.session_state.chat_history_for_display = [
         {"role": "assistant", "content": 
-         """**Spicy:**    \nAlright, champ. What's on the chaos list for tomorrow? 
-         Dump all of tomorrow's tasks right here, and I'll help you prioritize them."""},
+         """**Spicy:**    \n좋아, 친구. 내일의 잡다한 일들을 여기에 나열해봐.
+그럼 내가 하나하나 정리하고 우선순위를 정하는 걸 도와줄게."""},
     ]
 
 @timer_decorator
@@ -122,7 +122,7 @@ def get_response(chat_history, previous_task_list):
         except Exception as e:
             print(raw_content)
             print(e)
-            content = {'comment': '**Spicy:**    \nSorry, I didn\'t get that. Could you rephrase?', 'task_list': previous_task_list}
+            content = {'comment': '**Spicy:**    \n미안, 이해 못했어. 다시 말해줄 수 있어?', 'task_list': previous_task_list}
 
     new_task_list = content['task_list']
     comment = content['comment']
@@ -141,7 +141,7 @@ def generate_retriever_query(chat_history_for_display):
     """
     
     chat_history_for_retrieval_query = chat_history_for_display.copy()
-    chat_history_for_retrieval_query.append({"role": "user", "content": "[INSTRUCTION] To address the user's concerns based on our chat history, you will refer to the CBT guideline book for adult ADHD. Provide relevant keywords or topics of interest so you can extract the most pertinent information. ONLY KEYWORDS."})
+    chat_history_for_retrieval_query.append({"role": "user", "content": "[INSTRUCTION] To address the user's concerns based on our chat history, you will refer to the CBT guideline book for adult ADHD. Provide relevant keywords or topics of interest so you can extract the most pertinent information. ONLY KEYWORDS, in ENGLISH."})
 
     response = openai.ChatCompletion.create(
                     model= "gpt-3.5-turbo",
@@ -193,8 +193,7 @@ def generate_relevant_info(chat_history_for_display, user_input):
 
 
     
-st.title("SPICY: personal advisor for ADHD adults")
-st.markdown("video demo: https://youtu.be/kcb5eLBIKzs")
+st.title("SPICY: 성인 ADHD를 위한 퍼스널 어드바이저")
 
 if "saved_tasks" not in st.session_state:
     st.session_state.saved_tasks = []
@@ -218,17 +217,17 @@ st.markdown("""
 
 
 with st.sidebar:
-    st.markdown("## Tomorrow's tasks")
+    st.markdown("## 내일 할 일")
 
     # Check if there's an ongoing edit
     if st.session_state.editing:
-        edited_task_list = st.text_area("Edit your task list:", st.session_state.task_list)
-        if st.button("Save"):
+        edited_task_list = st.text_area("할 일 목록 수정하기:", st.session_state.task_list)
+        if st.button("저장"):
             st.session_state.task_list = edited_task_list
             st.session_state.editing = False
             st.session_state.change_in_task_list = True
 
-        if st.button("Cancel"):
+        if st.button("취소"):
             st.session_state.editing = False
     else:
         st.markdown(st.session_state.task_list)
@@ -236,7 +235,7 @@ with st.sidebar:
             if st.button("Edit"):
                 st.session_state.editing = True
 
-        if st.button("I'm done for today. Let's move on to the next day!"):
+        if st.button("이 정도면 됐어. 내일로 넘어가자!"):
             st.session_state.saved_tasks = st.session_state.task_list.split("\n")
             switch_page("next_day")
 
@@ -246,10 +245,10 @@ for message in st.session_state.chat_history_for_display:
         st.markdown(message["content"])
 
 # Get user input
-user_input = st.chat_input("Type here")
+user_input = st.chat_input("여기에 입력")
 if user_input:
     if st.session_state.editing == True:
-        st.warning("You are editing the task list. Please save or cancel your edit before proceeding.")
+        st.warning("할 일 목록이 아직 수정중입니다. 저장하거나 취소하고 다시 시도하세요.")
 
     else:
         # Display the user message until all the actions are done
@@ -278,7 +277,7 @@ if user_input:
         # Get the model response
         st.session_state.hide_edit = True
         with st.chat_message("assistant"):
-            st.markdown("*Spicy is thinking...*")
+            st.markdown("*Spicy가 생각 중입니다...*")
             raw_content, comment, new_task_list, current_state  = get_response(st.session_state.chat_history_for_model, st.session_state.task_list)
             print("\nraw_content: "+ raw_content)
             print("\nnew_task_list: "+ new_task_list)
