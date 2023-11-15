@@ -2,6 +2,17 @@ import streamlit as st
 import openai
 from streamlit_extras.switch_page_button import switch_page
 
+def on_submit():
+    # Your logic for when the '전송' button is clicked
+    st.session_state.task_status[current_task] = feedback
+
+    # Move to the next task or change state
+    if st.session_state.current_task_index < len(st.session_state.saved_tasks) - 1:
+        st.session_state.current_task_index += 1
+    else:
+        st.session_state.ready_to_chat = True
+        st.write("모든 작업이 처리되었습니다.")
+
 st.markdown("""
             <style>
             [data-testid="stSidebarNav"] {
@@ -21,7 +32,7 @@ if "chat_history_for_model_day2" not in st.session_state:
 not one to let you off the hook too easily, Spicy teases with warmth and humor, turning your reflecting sessions into light-hearted banter. 
 Prepping for tomorrow with Spicy feels like a lively chat with that friend who loves to poke fun but actually helps a lot and always has your back.
 
-Your job now is to give a feedback to the user based on the tasks he/she has done today. First off, for the tasks done today, praise the user and ask how he/she feels about it. For the tasks partially done, praise the user for starting and ask why they couldn't complete them. After that, move on to the undone tasks. For each task, have a conversation with the user, giving a feedback that encourages the user, finding out what blocked them from starting it and suggesting ways to fix the problem. You MUST ask one question at a time.
+Your job now is to give a feedback to the user based on the tasks he/she has done today. First off, for the tasks done today, praise the user and ask how he/she feels about it. For the tasks partially done, praise the user for starting and ask why they couldn't complete them. After that, move on to the undone tasks. For each task, have a conversation with the user, giving a feedback that encourages the user, finding out what blocked them from starting it and suggesting ways to fix the problem. You MUST ask one question at a time. Please reply in KOREAN.
 """},
         ]
     
@@ -57,19 +68,12 @@ if st.session_state.ready_to_chat == False:
     # Check if we have any tasks to display
     if st.session_state.saved_tasks:
         current_task = st.session_state.saved_tasks[st.session_state.current_task_index]
-        feedback = st.radio(f"How did you do with: {current_task}?", ["Done", "Partially done", "Didn't start"])
+        feedback = st.radio(f"다음 작업을 어떻게 수행하셨나요: {current_task}?", ["다 했음", "반쯤 했음", "못했음"])
 
-        if st.button("Submit"):
-            st.session_state.task_status[current_task] = feedback
-
-            # Move to the next task if there is one
-            if st.session_state.current_task_index < len(st.session_state.saved_tasks) - 1:
-                st.session_state.current_task_index += 1
-            else:
-                st.session_state.ready_to_chat = True
-                st.write("All tasks have been reviewed.")
+        if st.button("전송", on_click=on_submit):
+            pass
     else:
-        st.write("No tasks to display.")
+        st.write("표시할 작업이 없습니다.")
 
 # chat
 else:

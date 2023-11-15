@@ -25,7 +25,7 @@ def generate_retriever_query(chat_history_for_display):
     """
     
     chat_history_for_retrieval_query = chat_history_for_display.copy()
-    chat_history_for_retrieval_query.append({"role": "user", "content": "[INSTRUCTION] To address the user's concerns based on our chat history, you will refer to the CBT guideline book for adult ADHD. Provide relevant keywords or topics of interest so you can extract the most pertinent information. ONLY KEYWORDS."})
+    chat_history_for_retrieval_query.append({"role": "user", "content": "[INSTRUCTION] To address the user's concerns based on our chat history, you will refer to the CBT guideline book for adult ADHD. Provide relevant keywords or topics of interest so you can extract the most pertinent information. ONLY KEYWORDS, in ENGLISH."})
 
     response = openai.ChatCompletion.create(
                     model= "gpt-4",
