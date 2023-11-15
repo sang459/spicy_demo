@@ -99,7 +99,7 @@ def get_response(chat_history, previous_task_list):
     current_state: int, st.session_state.current_state에 할당됨 
     """
     response = openai.ChatCompletion.create(
-                    model= "gpt-4-1106-preview",
+                    model= "gpt-4",
                     messages=chat_history,
                     stream=False,
                     temperature=0.5,
@@ -144,7 +144,7 @@ def generate_retriever_query(chat_history_for_display):
     chat_history_for_retrieval_query.append({"role": "user", "content": "[INSTRUCTION] To address the user's concerns based on our chat history, you will refer to the CBT guideline book for adult ADHD. Provide relevant keywords or topics of interest so you can extract the most pertinent information. ONLY KEYWORDS, in ENGLISH."})
 
     response = openai.ChatCompletion.create(
-                    model= "gpt-4-1106-preview",
+                    model= "gpt-4",
                     messages=chat_history_for_retrieval_query,
                     stream=False,
                     temperature=0.5,
